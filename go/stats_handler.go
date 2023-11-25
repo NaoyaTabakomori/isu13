@@ -81,14 +81,8 @@ func getUserStatisticsHandler(c echo.Context) error {
 	// ユーザごとに、紐づく配信について、累計リアクション数、累計ライブコメント数、累計売上金額を算出
 	// また、現在の合計視聴者数もだす
 
-	tx, err := dbConn.BeginTxx(ctx, nil)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to begin transaction: "+err.Error())
-	}
-	defer tx.Rollback()
-
 	var user UserModel
-	if err := tx.GetContext(ctx, &user, "SELECT * FROM users WHERE name = ?", username); err != nil {
+	if err := dbConn.GetContext(ctx, &user, "SELECT * FROM users WHERE name = ?", username); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return echo.NewHTTPError(http.StatusBadRequest, "not found user that has the given username")
 		} else {
@@ -98,7 +92,7 @@ func getUserStatisticsHandler(c echo.Context) error {
 
 	// ランク算出
 	var users []*UserModel
-	if err := tx.SelectContext(ctx, &users, "SELECT * FROM users"); err != nil {
+	if err := dbConn.SelectContext(ctx, &users, "SELECT * FROM users"); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get users: "+err.Error())
 	}
 
@@ -106,7 +100,7 @@ func getUserStatisticsHandler(c echo.Context) error {
 	for _, user := range users {
 		var userStatsModel UserStatsModel
 		foundUserStats := true
-		if err := tx.GetContext(ctx, &userStatsModel, "SELECT * FROM user_stats WHERE user_id = ?", user.ID); err != nil {
+		if err := dbConn.GetContext(ctx, &userStatsModel, "SELECT * FROM user_stats WHERE user_id = ?", user.ID); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				foundUserStats = false
 			} else {
@@ -138,7 +132,7 @@ func getUserStatisticsHandler(c echo.Context) error {
 
 	var userStatsModel UserStatsModel
 	foundUserStats := true
-	if err := tx.GetContext(ctx, &userStatsModel, "SELECT * FROM user_stats WHERE user_id = ?", user.ID); err != nil {
+	if err := dbConn.GetContext(ctx, &userStatsModel, "SELECT * FROM user_stats WHERE user_id = ?", user.ID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			foundUserStats = false
 		} else {
@@ -171,7 +165,7 @@ func getUserStatisticsHandler(c echo.Context) error {
 	ORDER BY COUNT(*) DESC, emoji_name DESC
 	LIMIT 1
 	`
-	if err := tx.GetContext(ctx, &favoriteEmoji, query, username); err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err := dbConn.GetContext(ctx, &favoriteEmoji, query, username); err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to find favorite emoji: "+err.Error())
 	}
 
@@ -199,14 +193,8 @@ func getLivestreamStatisticsHandler(c echo.Context) error {
 	}
 	livestreamID := int64(id)
 
-	tx, err := dbConn.BeginTxx(ctx, nil)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to begin transaction: "+err.Error())
-	}
-	defer tx.Rollback()
-
 	var livestream LivestreamModel
-	if err := tx.GetContext(ctx, &livestream, "SELECT * FROM livestreams WHERE id = ?", livestreamID); err != nil {
+	if err := dbConn.GetContext(ctx, &livestream, "SELECT * FROM livestreams WHERE id = ?", livestreamID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return echo.NewHTTPError(http.StatusBadRequest, "cannot get stats of not found livestream")
 		} else {
@@ -215,7 +203,7 @@ func getLivestreamStatisticsHandler(c echo.Context) error {
 	}
 
 	var livestreams []*LivestreamModel
-	if err := tx.SelectContext(ctx, &livestreams, "SELECT * FROM livestreams"); err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err := dbConn.SelectContext(ctx, &livestreams, "SELECT * FROM livestreams"); err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get livestreams: "+err.Error())
 	}
 
@@ -234,7 +222,7 @@ func getLivestreamStatisticsHandler(c echo.Context) error {
 	}
 
 	var reactionModels []*ReactionModel
-	if err := tx.SelectContext(ctx, &reactionModels, sqls, params...); err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err := dbConn.SelectContext(ctx, &reactionModels, sqls, params...); err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get reactions: "+err.Error())
 	}
 
@@ -251,7 +239,7 @@ func getLivestreamStatisticsHandler(c echo.Context) error {
 	}
 
 	var livecommentModels []*LivecommentModel
-	if err := tx.SelectContext(ctx, &livecommentModels, sqls, params...); err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err := dbConn.SelectContext(ctx, &livecommentModels, sqls, params...); err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get reactions: "+err.Error())
 	}
 
@@ -296,7 +284,7 @@ func getLivestreamStatisticsHandler(c echo.Context) error {
 
 	// 視聴者数算出
 	var viewersCount int64
-	if err := tx.GetContext(ctx, &viewersCount, `SELECT COUNT(*) FROM livestream_viewers_history WHERE livestream_id = ?`, livestreamID); err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err := dbConn.GetContext(ctx, &viewersCount, `SELECT COUNT(*) FROM livestream_viewers_history WHERE livestream_id = ?`, livestreamID); err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to count livestream viewers: "+err.Error())
 	}
 
@@ -306,12 +294,8 @@ func getLivestreamStatisticsHandler(c echo.Context) error {
 
 	// スパム報告数
 	var totalReports int64
-	if err := tx.GetContext(ctx, &totalReports, `SELECT COUNT(*) FROM livecomment_reports WHERE livestream_id = ?`, livestreamID); err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err := dbConn.GetContext(ctx, &totalReports, `SELECT COUNT(*) FROM livecomment_reports WHERE livestream_id = ?`, livestreamID); err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to count total spam reports: "+err.Error())
-	}
-
-	if err := tx.Commit(); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to commit: "+err.Error())
 	}
 
 	return c.JSON(http.StatusOK, LivestreamStatistics{
