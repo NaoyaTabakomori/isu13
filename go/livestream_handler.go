@@ -555,7 +555,7 @@ func fillLivestreamResponseMulti(ctx context.Context, tx *sqlx.Tx, livestreamMod
 	for i := range livestreamTagModels {
 		tagIds[i] = livestreamTagModels[i].TagID
 	}
-	query, params, err = sqlx.In("SELECT * FROM tag WHERE id IN (?)", tagIds)
+	query, params, err = sqlx.In("SELECT * FROM tags WHERE id IN (?)", tagIds)
 	if err != nil {
 		return []Livestream{}, err
 	}
