@@ -253,10 +253,17 @@ func getLivestreamStatisticsHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get reactions: "+err.Error())
 	}
 
-	reactions := int64(len(reactionModels))
+	// reactionModels内の、livestream_idごとの要素数をカウントする
+	reactionsMap := make(map[int64]int64)
+	for _, reaction := range reactionModels {
+		reactionsMap[reaction.LivestreamID]++
+	}
 
 	var ranking LivestreamRanking
 	for _, livestream := range livestreams {
+		var reactions int64
+		reactions = reactionsMap[livestream.ID]
+
 		var totalTips int64
 		if err := tx.GetContext(ctx, &totalTips, "SELECT IFNULL(SUM(l2.tip), 0) FROM livestreams l INNER JOIN livecomments l2 ON l.id = l2.livestream_id WHERE l.id = ?", livestream.ID); err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return echo.NewHTTPError(http.StatusInternalServerError, "failed to count tips: "+err.Error())
