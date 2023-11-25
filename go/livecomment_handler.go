@@ -394,21 +394,21 @@ func moderateHandler(c echo.Context) error {
 	}
 
 	// NGワードにヒットする過去の投稿も全削除する
-	deleteCandidates := make([]int64, 0)
+	deleteComments := make([]int64, 0)
 	for _, livecomment := range livecomments {
 		comment := livecomment.Comment
 		for _, ngword := range ngwords {
 			word := ngword.Word
 			ng := strings.Contains(comment, word)
 			if ng {
-				deleteCandidates = append(deleteCandidates, livecomment.ID)
+				deleteComments = append(deleteComments, livecomment.ID)
 				break
 			}
 		}
 	}
 
-	sqls := "DELETE FROM livecomments WHERE livestream_id IN (?)"
-	sqls, params, err := sqlx.In(sqls, deleteCandidates)
+	sqls := "DELETE FROM livecomments WHERE id IN (?)"
+	sqls, params, err := sqlx.In(sqls, deleteComments)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to create sql: "+err.Error())
 	}
