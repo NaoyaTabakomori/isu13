@@ -104,8 +104,8 @@ git checkout $BRANCH
 git pull --rebase
 
 cd $PROJECT_ROOT
-cat webapp/sql/initdb.d/99_drop_create_db.sql | sudo mysql isupipe
-cat webapp/sql/initdb.d/10_schema.sql | sudo mysql isupipe
+cat $PROJECT_ROOT/sql/initdb.d/99_drop_create_db.sql | sudo mysql isupipe
+cat $PROJECT_ROOT/sql/initdb.d/10_schema.sql | sudo mysql isupipe
 
 cd $PROJECT_ROOT/go
 PATH=/home/isucon/local/python/bin:/home/isucon/local/perl/bin:/home/isucon/webapp/perl/local/bin:/home/isucon/local/ruby/bin:/home/isucon/local/php/bin:/home/isucon/local/php/sbin:/home/isucon/.cargo/bin:/home/isucon/local/node/bin:/home/isucon/local/golang/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin make build
