@@ -96,7 +96,6 @@ func getUserStatisticsHandler(c echo.Context) error {
 	var ranking UserRanking
 	for _, user := range users {
 		var reactions int64
-		// q:
 		query := `
 		SELECT COUNT(*) FROM users u
 		INNER JOIN livestreams l ON l.user_id = u.id
@@ -236,7 +235,6 @@ func getLivestreamStatisticsHandler(c echo.Context) error {
 
 	// ランク算出
 
-	// livestreams内の各要素のIDの配列を作成
 	livestreamIds := make([]int64, len(livestreams))
 	for i := range livestreams {
 		livestreamIds[i] = livestreams[i].ID
@@ -253,7 +251,6 @@ func getLivestreamStatisticsHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get reactions: "+err.Error())
 	}
 
-	// reactionModels内の、livestream_idごとの要素数をカウントする
 	reactionsMap := make(map[int64]int64)
 	for _, reaction := range reactionModels {
 		reactionsMap[reaction.LivestreamID]++
