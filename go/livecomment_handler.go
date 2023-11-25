@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -386,31 +387,34 @@ func moderateHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get NG words: "+err.Error())
 	}
 
-	// NGワードにヒットする過去の投稿も全削除する
-	for _, ngword := range ngwords {
-		// ライブコメント一覧取得
-		var livecomments []*LivecommentModel
-		if err := tx.SelectContext(ctx, &livecomments, "SELECT * FROM livecomments"); err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, "failed to get livecomments: "+err.Error())
-		}
+	// ライブコメント一覧取得
+	var livecomments []*LivecommentModel
+	if err := tx.SelectContext(ctx, &livecomments, "SELECT * FROM livecomments WHERE livestream_id = ?"); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get livecomments: "+err.Error())
+	}
 
-		for _, livecomment := range livecomments {
-			query := `
-			DELETE FROM livecomments
-			WHERE
-			id = ? AND
-			livestream_id = ? AND
-			(SELECT COUNT(*)
-			FROM
-			(SELECT ? AS text) AS texts
-			INNER JOIN
-			(SELECT CONCAT('%', ?, '%')	AS pattern) AS patterns
-			ON texts.text LIKE patterns.pattern) >= 1;
-			`
-			if _, err := tx.ExecContext(ctx, query, livecomment.ID, livestreamID, livecomment.Comment, ngword.Word); err != nil {
-				return echo.NewHTTPError(http.StatusInternalServerError, "failed to delete old livecomments that hit spams: "+err.Error())
+	// NGワードにヒットする過去の投稿も全削除する
+	deleteCandidates := make([]int64, 0)
+	for _, livecomment := range livecomments {
+		comment := livecomment.Comment
+		for _, ngword := range ngwords {
+			word := ngword.Word
+			ng := strings.Contains(comment, word)
+			if ng {
+				deleteCandidates = append(deleteCandidates, livecomment.ID)
 			}
 		}
+	}
+
+	sqls := "DELETE FROM livecomments WHERE livestream_id IN (?)"
+	sqls, params, err := sqlx.In(sqls, deleteCandidates)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to create sql: "+err.Error())
+	}
+
+	var deleted []*LivecommentModel
+	if err := tx.SelectContext(ctx, deleted, sqls, params...); err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get reactions: "+err.Error())
 	}
 
 	if err := tx.Commit(); err != nil {
