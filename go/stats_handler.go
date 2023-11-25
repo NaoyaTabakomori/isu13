@@ -311,7 +311,7 @@ func getLivestreamStatisticsHandler(c echo.Context) error {
 	// 視聴者数算出
 	var viewersCount int64
 	if err := tx.GetContext(ctx, &viewersCount, `SELECT COUNT(*) FROM livestream_viewers_history WHERE livestream_id = ?`, livestreamID); err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to count livestream viewers: "+err.Error())
+		viewersCount = 0
 	}
 
 	// リアクション数
@@ -321,7 +321,7 @@ func getLivestreamStatisticsHandler(c echo.Context) error {
 	// スパム報告数
 	var totalReports int64
 	if err := tx.GetContext(ctx, &totalReports, `SELECT COUNT(*) FROM livecomment_reports WHERE livestream_id = ?`, livestreamID); err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to count total spam reports: "+err.Error())
+		totalReports = 0
 	}
 
 	if err := tx.Commit(); err != nil {
