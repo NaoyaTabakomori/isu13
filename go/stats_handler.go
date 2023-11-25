@@ -269,9 +269,18 @@ func getLivestreamStatisticsHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get reactions: "+err.Error())
 	}
 
+	// -- 最大チップ額
+	maxTip := int64(0)
 	totalTipsMap := make(map[int64]int64)
 	for _, livecomment := range livecommentModels {
 		totalTipsMap[livecomment.LivestreamID] += livecomment.Tip
+
+		// livecommentのLivestreamIDがlivestream.IDと一致する場合、最大値を更新
+		if livecomment.LivestreamID == livestream.ID {
+			if livecomment.Tip > maxTip {
+				maxTip = livecomment.Tip
+			}
+		}
 	}
 
 	var ranking LivestreamRanking
@@ -305,17 +314,9 @@ func getLivestreamStatisticsHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to count livestream viewers: "+err.Error())
 	}
 
-	// 最大チップ額
-	var maxTip int64
-	if err := tx.GetContext(ctx, &maxTip, `SELECT IFNULL(MAX(tip), 0) FROM livestreams l INNER JOIN livecomments l2 ON l2.livestream_id = l.id WHERE l.id = ?`, livestreamID); err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to find maximum tip livecomment: "+err.Error())
-	}
-
 	// リアクション数
 	var totalReactions int64
-	if err := tx.GetContext(ctx, &totalReactions, "SELECT COUNT(*) FROM livestreams l INNER JOIN reactions r ON r.livestream_id = l.id WHERE l.id = ?", livestreamID); err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to count total reactions: "+err.Error())
-	}
+	totalReactions = reactionsMap[livestreamID]
 
 	// スパム報告数
 	var totalReports int64
