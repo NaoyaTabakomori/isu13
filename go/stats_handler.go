@@ -235,7 +235,7 @@ func getLivestreamStatisticsHandler(c echo.Context) error {
 
 	// ランク算出
 
-	// -- リアクション数
+	// -- リアクション数計算
 	livestreamIds := make([]int64, len(livestreams))
 	for i := range livestreams {
 		livestreamIds[i] = livestreams[i].ID
@@ -257,15 +257,30 @@ func getLivestreamStatisticsHandler(c echo.Context) error {
 		reactionsMap[reaction.LivestreamID]++
 	}
 
+	// -- totalTips数
+	sqls = "SELECT * FROM livecomments WHERE livestream_id IN (?)"
+	sqls, params, err = sqlx.In(sqls, livestreamIds)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to create sql: "+err.Error())
+	}
+
+	var livecommentModels []*LivecommentModel
+	if err := tx.SelectContext(ctx, &livecommentModels, sqls, params...); err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get reactions: "+err.Error())
+	}
+
+	totalTipsMap := make(map[int64]int64)
+	for _, livecomment := range livecommentModels {
+		totalTipsMap[livecomment.LivestreamID] += livecomment.Tip
+	}
+
 	var ranking LivestreamRanking
 	for _, livestream := range livestreams {
 		var reactions int64
 		reactions = reactionsMap[livestream.ID]
 
 		var totalTips int64
-		if err := tx.GetContext(ctx, &totalTips, "SELECT IFNULL(SUM(l2.tip), 0) FROM livestreams l INNER JOIN livecomments l2 ON l.id = l2.livestream_id WHERE l.id = ?", livestream.ID); err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return echo.NewHTTPError(http.StatusInternalServerError, "failed to count tips: "+err.Error())
-		}
+		totalTips = totalTipsMap[livestream.ID]
 
 		score := reactions + totalTips
 		ranking = append(ranking, LivestreamRankingEntry{
