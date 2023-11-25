@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"errors"
+	"github.com/jmoiron/sqlx"
 	"net/http"
 	"sort"
 	"strconv"
@@ -95,6 +96,7 @@ func getUserStatisticsHandler(c echo.Context) error {
 	var ranking UserRanking
 	for _, user := range users {
 		var reactions int64
+		// q:
 		query := `
 		SELECT COUNT(*) FROM users u
 		INNER JOIN livestreams l ON l.user_id = u.id
@@ -233,13 +235,28 @@ func getLivestreamStatisticsHandler(c echo.Context) error {
 	}
 
 	// ランク算出
+
+	// livestreams内の各要素のIDの配列を作成
+	livestreamIds := make([]int64, len(livestreams))
+	for i := range livestreams {
+		livestreamIds[i] = livestreams[i].ID
+	}
+
+	sqls := "SELECT * FROM reactions WHERE livestream_id IN (?)"
+	sqls, params, err := sqlx.In(sqls, livestreamIds)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to create sql: "+err.Error())
+	}
+
+	var reactionModels []*ReactionModel
+	if err := tx.SelectContext(ctx, &reactionModels, sqls, params...); err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get reactions: "+err.Error())
+	}
+
+	reactions := int64(len(reactionModels))
+
 	var ranking LivestreamRanking
 	for _, livestream := range livestreams {
-		var reactions int64
-		if err := tx.GetContext(ctx, &reactions, "SELECT COUNT(*) FROM livestreams l INNER JOIN reactions r ON l.id = r.livestream_id WHERE l.id = ?", livestream.ID); err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return echo.NewHTTPError(http.StatusInternalServerError, "failed to count reactions: "+err.Error())
-		}
-
 		var totalTips int64
 		if err := tx.GetContext(ctx, &totalTips, "SELECT IFNULL(SUM(l2.tip), 0) FROM livestreams l INNER JOIN livecomments l2 ON l.id = l2.livestream_id WHERE l.id = ?", livestream.ID); err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return echo.NewHTTPError(http.StatusInternalServerError, "failed to count tips: "+err.Error())
