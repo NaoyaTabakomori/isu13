@@ -20,6 +20,8 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/labstack/echo-contrib/session"
 	echolog "github.com/labstack/gommon/log"
+
+	"cloud.google.com/go/profiler"
 )
 
 const (
@@ -119,6 +121,15 @@ func initializeHandler(c echo.Context) error {
 }
 
 func main() {
+	cfg := profiler.Config{
+		Service:        "isucon13",
+		ServiceVersion: "v0.0.1",
+		ProjectID:      os.Getenv("GCP_PROJECT_ID"),
+	}
+	if err := profiler.Start(cfg); err != nil {
+		panic(err)
+	}
+
 	e := echo.New()
 	e.Debug = true
 	e.Logger.SetLevel(echolog.DEBUG)
