@@ -350,6 +350,18 @@ func enterLivestreamHandler(c echo.Context) error {
 	if _, err := tx.NamedExecContext(ctx, "INSERT INTO livestream_viewers_history (user_id, livestream_id, created_at) VALUES(:user_id, :livestream_id, :created_at)", viewer); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to insert livestream_view_history: "+err.Error())
 	}
+	livestreamModel := LivestreamModel{}
+	err = tx.GetContext(ctx, &livestreamModel, "SELECT * FROM livestreams WHERE id = ?", livestreamID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return echo.NewHTTPError(http.StatusNotFound, "not found livestream that has the given id")
+	}
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get livestream: "+err.Error())
+	}
+	_, err = tx.ExecContext(ctx, "INSERT INTO user_stats (user_id, viewer_count) VALUES (?, 1) ON DUPLICATE KEY UPDATE viewer_count = viewer_count + 1", livestreamModel.UserID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to insert reaction: "+err.Error())
+	}
 
 	if err := tx.Commit(); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to commit: "+err.Error())
@@ -383,6 +395,19 @@ func exitLivestreamHandler(c echo.Context) error {
 
 	if _, err := tx.ExecContext(ctx, "DELETE FROM livestream_viewers_history WHERE user_id = ? AND livestream_id = ?", userID, livestreamID); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to delete livestream_view_history: "+err.Error())
+	}
+
+	livestreamModel := LivestreamModel{}
+	err = tx.GetContext(ctx, &livestreamModel, "SELECT * FROM livestreams WHERE id = ?", livestreamID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return echo.NewHTTPError(http.StatusNotFound, "not found livestream that has the given id")
+	}
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get livestream: "+err.Error())
+	}
+	_, err = tx.ExecContext(ctx, "UPDATE user_stats SET viewer_count = viewer_count - 1 WHERE user_id = ?", livestreamModel.UserID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to insert reaction: "+err.Error())
 	}
 
 	if err := tx.Commit(); err != nil {
