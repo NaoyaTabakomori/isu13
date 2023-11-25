@@ -120,7 +120,7 @@ func initializeHandler(c echo.Context) error {
 
 	// user_statsの初期化
 	var livestreamModels []*LivestreamModel
-	if err := dbConn.GetContext(ctx, &livestreamModels, "SELECT * FROM livestreams"); err != nil {
+	if err := dbConn.SelectContext(ctx, &livestreamModels, "SELECT * FROM livestreams"); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get livestreams: "+err.Error())
 	}
 	for _, lm := range livestreamModels {
@@ -137,7 +137,7 @@ func initializeHandler(c echo.Context) error {
 
 func initUserStats(ctx context.Context, lm *LivestreamModel) error {
 	var liveStreamComments []*LivecommentModel
-	if err := dbConn.GetContext(ctx, &liveStreamComments, "SELECT * FROM livecomments WHERE livestream_id = ?", lm.ID); err != nil {
+	if err := dbConn.SelectContext(ctx, &liveStreamComments, "SELECT * FROM livecomments WHERE livestream_id = ?", lm.ID); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get livecomments: "+err.Error())
 	}
 	var liveCommentCount int64
