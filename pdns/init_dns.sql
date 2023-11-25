@@ -1,0 +1,1 @@
+ALTER TABLE records ADD INDEX idx_name_domain_id_disabled (name, domain_id, disabled);
