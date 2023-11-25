@@ -226,6 +226,10 @@ func postLivecommentHandler(c echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to insert livecomment: "+err.Error())
 	}
+	_, err = tx.ExecContext(ctx, "INSERT INTO user_stats (user_id, tip_count, comment_count) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE tip_count = tip_count + ?, comment_count = comment_count + 1", userID, req.Tip, req.Tip)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to insert reaction: "+err.Error())
+	}
 
 	livecommentID, err := rs.LastInsertId()
 	if err != nil {

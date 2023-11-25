@@ -4,6 +4,7 @@ package main
 // sqlx的な参考: https://jmoiron.github.io/sqlx/
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
@@ -49,7 +50,7 @@ type InitializeResponse struct {
 func connectDB(logger echo.Logger) (*sqlx.DB, error) {
 	const (
 		networkTypeEnvKey = "ISUCON13_MYSQL_DIALCONFIG_NET"
-		addrEnvKey        = "ISUCON13_MYSQL_DIALCONFIG_ADDRESS"
+		addrEnvKey        = "ISUCON13_MYSQL_DIALCONFIG_ADDRESS2"
 		portEnvKey        = "ISUCON13_MYSQL_DIALCONFIG_PORT"
 		userEnvKey        = "ISUCON13_MYSQL_DIALCONFIG_USER"
 		passwordEnvKey    = "ISUCON13_MYSQL_DIALCONFIG_PASSWORD"
@@ -110,15 +111,59 @@ func connectDB(logger echo.Logger) (*sqlx.DB, error) {
 }
 
 func initializeHandler(c echo.Context) error {
+	ctx := c.Request().Context()
+
 	if out, err := exec.Command("../sql/init.sh").CombinedOutput(); err != nil {
 		c.Logger().Warnf("init.sh failed with err=%s", string(out))
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to initialize: "+err.Error())
+	}
+
+	// user_statsの初期化
+	var livestreamModels []*LivestreamModel
+	if err := dbConn.SelectContext(ctx, &livestreamModels, "SELECT * FROM livestreams"); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get livestreams: "+err.Error())
+	}
+	for _, lm := range livestreamModels {
+		if err := initUserStats(ctx, lm); err != nil {
+			return err
+		}
 	}
 
 	c.Request().Header.Add("Content-Type", "application/json;charset=utf-8")
 	return c.JSON(http.StatusOK, InitializeResponse{
 		Language: "golang",
 	})
+}
+
+func initUserStats(ctx context.Context, lm *LivestreamModel) error {
+	var liveStreamComments []*LivecommentModel
+	if err := dbConn.SelectContext(ctx, &liveStreamComments, "SELECT * FROM livecomments WHERE livestream_id = ?", lm.ID); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get livecomments: "+err.Error())
+	}
+	var liveCommentCount int64
+	var tipCount int64
+	for _, lc := range liveStreamComments {
+		liveCommentCount++
+		tipCount += lc.Tip
+	}
+	var reactionCount int64
+	if err := dbConn.GetContext(ctx, &reactionCount, "SELECT COUNT(1) FROM reactions WHERE livestream_id = ?", lm.ID); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get reactions: "+err.Error())
+	}
+	tx, err := dbConn.BeginTxx(ctx, nil)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to begin transaction: "+err.Error())
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.ExecContext(ctx, "INSERT INTO user_stats (user_id, comment_count, reaction_count, tip_count) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE comment_count = comment_count + ?, reaction_count = reaction_count + ?, tip_count = tip_count + ?", lm.UserID, liveCommentCount, reactionCount, tipCount, liveCommentCount, reactionCount, tipCount); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to insert user_stats: "+err.Error())
+	}
+
+	if err := tx.Commit(); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to commit transaction: "+err.Error())
+	}
+	return nil
 }
 
 func main() {

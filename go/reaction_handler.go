@@ -122,6 +122,10 @@ func postReactionHandler(c echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to insert reaction: "+err.Error())
 	}
+	_, err = tx.ExecContext(ctx, "INSERT INTO user_stats (user_id, reaction_count) VALUES (?, 1) ON DUPLICATE KEY UPDATE reaction_count = reaction_count + 1", reactionModel.UserID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to insert reaction: "+err.Error())
+	}
 
 	reactionID, err := result.LastInsertId()
 	if err != nil {

@@ -119,6 +119,11 @@ echo "Start Database Server"
 cat <<EOS | ssh $KEY_OPTION $USER@$DB_SERVER sh
 sudo swapoff -a && sudo swapon -a
 sudo systemctl start mysql
+
+cd $PROJECT_ROOT
+mysql -uisucon -pisucon isupipe < $PROJECT_ROOT/sql/initdb.d/99_drop_create_db.sql
+mysql -uisucon -pisucon isupipe < $PROJECT_ROOT/sql/initdb.d/10_schema.sql
+
 EOS
 echo "Start App Server"
 for APP_SERVER in $APP_SERVERS
