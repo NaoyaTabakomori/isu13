@@ -63,7 +63,8 @@ CREATE TABLE `livestream_viewers_history` (
   `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `user_id` BIGINT NOT NULL,
   `livestream_id` BIGINT NOT NULL,
-  `created_at` BIGINT NOT NULL
+  `created_at` BIGINT NOT NULL,
+  INDEX `idx_livestream_id` (`livestream_id`)
 ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
 
 -- ライブ配信に対するライブコメント
@@ -83,7 +84,8 @@ CREATE TABLE `livecomment_reports` (
   `user_id` BIGINT NOT NULL,
   `livestream_id` BIGINT NOT NULL,
   `livecomment_id` BIGINT NOT NULL,
-  `created_at` BIGINT NOT NULL
+  `created_at` BIGINT NOT NULL,
+  INDEX `idx_livestream_id` (`livestream_id`)
 ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
 
 -- 配信者からのNGワード登録
