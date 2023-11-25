@@ -402,6 +402,7 @@ func moderateHandler(c echo.Context) error {
 			ng := strings.Contains(comment, word)
 			if ng {
 				deleteCandidates = append(deleteCandidates, livecomment.ID)
+				break
 			}
 		}
 	}
