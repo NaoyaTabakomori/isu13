@@ -235,6 +235,7 @@ func getLivestreamStatisticsHandler(c echo.Context) error {
 
 	// ランク算出
 
+	// -- リアクション数
 	livestreamIds := make([]int64, len(livestreams))
 	for i := range livestreams {
 		livestreamIds[i] = livestreams[i].ID
