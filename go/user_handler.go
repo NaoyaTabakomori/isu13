@@ -435,7 +435,7 @@ func fillUserResponseMulti(ctx context.Context, tx *sqlx.Tx, userModels []*UserM
 		themeModelsMap[themeModel.UserID] = *themeModel
 	}
 
-	query, params, err = sqlx.In("SELECT * FROM icons WHERE user_id IN (?)", userIds)
+	query, params, err = sqlx.In("SELECT id, user_id, hash FROM icons WHERE user_id IN (?)", userIds)
 	if err != nil {
 		return []User{}, err
 	}
