@@ -467,13 +467,14 @@ func fillLivestreamResponseMulti(ctx context.Context, livestreamModels []*Livest
 		ownerModelMap[ownerModel.ID] = *ownerModel
 	}
 
-	owners, err := fillUserResponseMulti(ctx, ownerModels)
-	if err != nil {
-		return []Livestream{}, err
-	}
 	ownersMap := make(map[int64]User, len(ownerModels))
-	for _, owner := range owners {
-		ownersMap[owner.ID] = owner
+	for i := range livestreamModels {
+		ownerModel := ownerModelMap[livestreamModels[i].UserID]
+		owner, err := fillUserResponse(ctx, ownerModel)
+		if err != nil {
+			return []Livestream{}, err
+		}
+		ownersMap[ownerModel.ID] = owner
 	}
 
 	livestreamIds := make([]int64, len(livestreamModels))

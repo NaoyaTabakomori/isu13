@@ -382,14 +382,16 @@ func moderateHandler(c echo.Context) error {
 		}
 	}
 
-	sqls := "DELETE FROM livecomments WHERE id IN (?)"
-	sqls, params, err := sqlx.In(sqls, deleteComments)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to create sql: "+err.Error())
-	}
+	if len(deleteComments) > 0 {
+		sqls := "DELETE FROM livecomments WHERE id IN (?)"
+		sqls, params, err := sqlx.In(sqls, deleteComments)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "failed to create sql: "+err.Error())
+		}
 
-	if _, err := tx.ExecContext(ctx, sqls, params...); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to delete livecomments: "+err.Error())
+		if _, err := tx.ExecContext(ctx, sqls, params...); err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "failed to delete livecomments: "+err.Error())
+		}
 	}
 
 	if err := tx.Commit(); err != nil {
