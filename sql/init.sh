@@ -77,8 +77,8 @@ mysql -u"$ISUCON_DB_USER" \
 
 bash ../pdns/init_zone.sh
 
-mysql -u"$ISUCON_DNS_USER" \
-		-p"$ISUCON_DNS_PASSWORD" \
-		--host "$ISUCON_DNS_HOST" \
-		--port "$ISUCON_DNS_PORT" \
-		"$ISUCON_DNS_NAME" < ../pdns/init_dns.sql
+#mysql -u"$ISUCON_DNS_USER" \
+#		-p"$ISUCON_DNS_PASSWORD" \
+#		--host "$ISUCON_DNS_HOST" \
+#		--port "$ISUCON_DNS_PORT" \
+#		"$ISUCON_DNS_NAME" < ../pdns/init_dns.sql
