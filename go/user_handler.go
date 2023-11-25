@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/sessions"
+	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
 	"golang.org/x/crypto/bcrypt"
@@ -54,6 +55,12 @@ type ThemeModel struct {
 	ID       int64 `db:"id"`
 	UserID   int64 `db:"user_id"`
 	DarkMode bool  `db:"dark_mode"`
+}
+
+type IconModel struct {
+	ID     int64  `db:"id"`
+	UserID int64  `db:"user_id"`
+	Hash   string `db:"hash"`
 }
 
 type PostUserRequest struct {
@@ -381,6 +388,68 @@ func verifyUserSession(c echo.Context) error {
 	}
 
 	return nil
+}
+
+func fillUserResponseMulti(ctx context.Context, userModels []*UserModel) ([]User, error) {
+	userIds := make([]int64, len(userModels))
+	for i := range userModels {
+		userIds[i] = userModels[i].ID
+	}
+
+	query, params, err := sqlx.In("SELECT * FROM themes WHERE user_id IN (?)", userIds)
+	if err != nil {
+		return []User{}, err
+	}
+	var themeModels []*ThemeModel
+	if err := dbConn.SelectContext(ctx, &themeModels, query, params...); err != nil {
+		return []User{}, err
+	}
+	themeModelsMap := make(map[int64]ThemeModel, len(themeModels))
+	for _, themeModel := range themeModels {
+		themeModelsMap[themeModel.UserID] = *themeModel
+	}
+
+	query, params, err = sqlx.In("SELECT * FROM icons WHERE user_id IN (?)", userIds)
+	if err != nil {
+		return []User{}, err
+	}
+	var iconModels []*IconModel
+	if err := dbConn.SelectContext(ctx, &iconModels, query, params...); err != nil {
+		return []User{}, err
+	}
+	iconModelsMap := make(map[int64]IconModel, len(iconModels))
+	for _, iconModel := range iconModels {
+		iconModelsMap[iconModel.UserID] = *iconModel
+	}
+
+	users := make([]User, len(userModels))
+	for i, userModel := range userModels {
+		themeModel, ok := themeModelsMap[userModel.ID]
+		if !ok {
+			return []User{}, errors.New("not found theme model")
+		}
+		iconModel, ok := iconModelsMap[userModel.ID]
+		if !ok {
+			return []User{}, errors.New("not found icon model")
+		}
+		iconHash := iconModel.Hash
+		if iconHash == "" {
+			iconHash = "d9f8294e9d895f81ce62e73dc7d5dff862a4fa40bd4e0fecf53f7526a8edcac0" // fallbackImage
+		}
+		users[i] = User{
+			ID:          userModel.ID,
+			Name:        userModel.Name,
+			DisplayName: userModel.DisplayName,
+			Description: userModel.Description,
+			Theme: Theme{
+				ID:       themeModel.ID,
+				DarkMode: themeModel.DarkMode,
+			},
+			IconHash: iconModel.Hash,
+		}
+	}
+
+	return users, nil
 }
 
 func fillUserResponse(ctx context.Context, userModel UserModel) (User, error) {
