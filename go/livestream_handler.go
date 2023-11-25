@@ -524,7 +524,8 @@ func fillLivestreamResponseMulti(ctx context.Context, tx *sqlx.Tx, livestreamMod
 		if err != nil {
 			return []Livestream{}, err
 		}
-	ownersMap[ownerModel.ID] = owner
+		ownersMap[ownerModel.ID] = owner
+	}
 
 	livestreamIds := make([]int64, len(livestreamModels))
 	for i := range livestreamModels {
