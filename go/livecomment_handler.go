@@ -413,9 +413,8 @@ func moderateHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to create sql: "+err.Error())
 	}
 
-	var deleted []*LivecommentModel
-	if err := tx.SelectContext(ctx, deleted, sqls, params...); err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get reactions: "+err.Error())
+	if _, err := tx.ExecContext(ctx, sqls, params...); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to delete livecomments: "+err.Error())
 	}
 
 	if err := tx.Commit(); err != nil {
