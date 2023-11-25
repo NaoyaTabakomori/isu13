@@ -107,3 +107,12 @@ CREATE TABLE `reactions` (
   `created_at` BIGINT NOT NULL,
   INDEX `idx_livestream_id` (`livestream_id`)
 ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
+
+-- ユーザーごとのスタッツ
+CREATE TABLE `user_stats` (
+  `user_id` BIGINT NOT NULL PRIMARY KEY,
+  `reaction_count` BIGINT NOT NULL DEFAULT 0,
+  `tip_count` BIGINT NOT NULL DEFAULT 0,
+  `comment_count` BIGINT NOT NULL DEFAULT 0,
+  `viewer_count` BIGINT NOT NULL DEFAULT 0
+) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
