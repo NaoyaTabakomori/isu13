@@ -156,7 +156,7 @@ func initUserStats(ctx context.Context, lm *LivestreamModel) error {
 	}
 	defer tx.Rollback()
 
-	if _, err := tx.ExecContext(ctx, "INSERT INTO user_stats (user_id, livecomment_count, reaction_count, tip_count) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE livecomment_count = livecomment_count + ?, reaction_count = reaction_count + ?, tip_count = tip_count + ?", lm.UserID, liveCommentCount, reactionCount, tipCount, liveCommentCount, reactionCount, tipCount); err != nil {
+	if _, err := tx.ExecContext(ctx, "INSERT INTO user_stats (user_id, comment_count, reaction_count, tip_count) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE comment_count = comment_count + ?, reaction_count = reaction_count + ?, tip_count = tip_count + ?", lm.UserID, liveCommentCount, reactionCount, tipCount, liveCommentCount, reactionCount, tipCount); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to insert user_stats: "+err.Error())
 	}
 
