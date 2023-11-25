@@ -50,7 +50,7 @@ type InitializeResponse struct {
 func connectDB(logger echo.Logger) (*sqlx.DB, error) {
 	const (
 		networkTypeEnvKey = "ISUCON13_MYSQL_DIALCONFIG_NET"
-		addrEnvKey        = "ISUCON13_MYSQL_DIALCONFIG_ADDRESS"
+		addrEnvKey        = "ISUCON13_MYSQL_DIALCONFIG_ADDRESS2"
 		portEnvKey        = "ISUCON13_MYSQL_DIALCONFIG_PORT"
 		userEnvKey        = "ISUCON13_MYSQL_DIALCONFIG_USER"
 		passwordEnvKey    = "ISUCON13_MYSQL_DIALCONFIG_PASSWORD"
